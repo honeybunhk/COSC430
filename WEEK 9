@@ -1,0 +1,97 @@
+\section{Appendix: Makefile and Demo Program}
+
+The following demonstrates how a simple Makefile automates the compilation process of a C program. This setup uses GNU Make to build, clean, and manage the lifecycle of the executable. It is an example of a minimal yet effective build automation setup used frequently in system-level projects such as shell programming.
+
+\subsection{hello.c Program}
+\begin{lstlisting}[language=C, caption={hello.c - A simple C program}]
+#include <stdio.h>
+
+/*
+ * A simple program that prints a greeting message.
+ * This file will be compiled using the Makefile below.
+ */
+
+int main() {
+    printf("Hello, world! This program was compiled using a Makefile.\n");
+    printf("Automating compilation saves time and ensures consistency.\n");
+    return 0;
+}
+\end{lstlisting}
+
+\subsection{Makefile}
+\begin{lstlisting}[language=make, caption={Makefile - Automating compilation of hello.c}]
+# Compiler variable
+CC = gcc
+
+# Compiler flags: -Wall enables all warnings, -g includes debugging info
+CFLAGS = -Wall -g
+
+# The target executable name
+TARGET = hello
+
+# Default target: builds the program
+all: $(TARGET)
+
+# Rule for building the executable from object file
+$(TARGET): hello.o
+	$(CC) $(CFLAGS) -o $(TARGET) hello.o
+	@echo "Build complete! Run ./$(TARGET) to execute the program."
+
+# Rule for creating the object file
+hello.o: hello.c
+	$(CC) $(CFLAGS) -c hello.c
+	@echo "Compiled hello.c successfully."
+
+# Optional clean command to remove compiled files
+clean:
+	rm -f $(TARGET) *.o
+	@echo "Cleaned up all compiled files."
+\end{lstlisting}
+
+\subsection{Explanation of the Makefile}
+This Makefile defines automated steps for compiling and cleaning a C project. The key features include:
+\begin{itemize}
+  \item \textbf{Compiler variables:} The \texttt{CC} variable stores the compiler (in this case, \texttt{gcc}), and \texttt{CFLAGS} defines options such as warnings and debugging.
+  \item \textbf{Targets:} Each labeled section (like \texttt{all}, \texttt{clean}, or the name of the executable) defines a build step.
+  \item \textbf{Dependencies:} Lines such as \texttt{hello.o: hello.c} ensure that the object file is rebuilt only when the source file changes.
+  \item \textbf{Commands:} The lines starting with tabs are shell commands executed by the Make utility.
+  \item \textbf{Automation:} Running \texttt{make} automatically builds the project without manually typing long compiler commands.
+\end{itemize}
+
+\subsection{Running the Makefile}
+To use this Makefile:
+\begin{enumerate}
+  \item Save both files (\texttt{hello.c} and \texttt{Makefile}) in the same folder.
+  \item Open a terminal in that directory.
+  \item Run the command:
+  \begin{verbatim}
+  make
+  \end{verbatim}
+  \item Execute the compiled program:
+  \begin{verbatim}
+  ./hello
+  \end{verbatim}
+  \item To clean up compiled files, run:
+  \begin{verbatim}
+  make clean
+  \end{verbatim}
+\end{enumerate}
+
+\subsection{Sample Output}
+When the Makefile runs successfully, the terminal output appears as follows:
+\begin{lstlisting}
+$ make
+gcc -Wall -g -c hello.c
+Compiled hello.c successfully.
+gcc -Wall -g -o hello hello.o
+Build complete! Run ./hello to execute the program.
+
+$ ./hello
+Hello, world! This program was compiled using a Makefile.
+Automating compilation saves time and ensures consistency.
+
+$ make clean
+Cleaned up all compiled files.
+\end{lstlisting}
+
+This demonstration reflects how developers manage build processes efficiently in larger system-level programs, including custom shells written in C. It emphasizes structure, modularity, and maintainability—three key qualities in professional software engineering.
