@@ -1,0 +1,141 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  backgroundcolor=\color{gray!5},
+  tabsize=2
+}
+
+\begin{document}
+
+\title{Deep Dive into the Design and Implementation of a Simple Shell in C: Understanding Process Management, Command Execution, and System-Level Programming}
+
+\author{\IEEEauthorblockN{Hanan Kemal}
+\IEEEauthorblockA{Department of Computer Science\\
+Bowie State University\\
+Bowie, MD, USA\\
+Email: hkemal@students.bowiestate.edu}
+\and
+\IEEEauthorblockN{Prof. Appolo Tankeh}
+\IEEEauthorblockA{Department of Computer Science\\
+Bowie State University\\
+Bowie, MD, USA\\
+Email: atankeh@bowiestate.edu}}
+
+\maketitle
+
+\begin{abstract}
+This paper provides a comprehensive exploration of Stephen Brennan's minimalist shell program, often known as the ``Little Shell'' (LSH), implemented in the C programming language. By studying this program, I gained a deeper understanding of how operating systems manage processes, execute user commands, and handle system resources efficiently. The study focuses on three major takeaways: the importance of process creation using \texttt{fork()}, program execution using \texttt{execvp()}, and synchronization using \texttt{waitpid()}. The report also expands on additional shell functionalities such as command parsing, I/O redirection, piping, environment variables, signal handling, and error management. By reflecting on the underlying mechanisms of a simple shell, I connect theoretical knowledge of operating system principles with hands-on programming practice in C.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Shell programming, C language, fork, execvp, waitpid, operating systems, process management, command-line interface, system calls, process synchronization
+\end{IEEEkeywords}
+
+\section{Introduction}
+In computer systems, a shell acts as the bridge between users and the operating system. It interprets textual commands and translates them into actions the kernel can perform. Studying a custom shell written in C is a valuable way to understand how fundamental operating system components work together. Stephen Brennan's shell is an educational example that distills the essence of process creation, program execution, and input/output management into a few hundred lines of C code.
+
+By recreating and analyzing this shell, I was able to understand how Linux-based systems execute user commands step by step, how child processes are spawned, and how system calls enable multitasking. This hands-on project helped me transition from theoretical learning to practical implementation, aligning directly with the objectives of my Operating Systems course under the guidance of Professor Appolo Tankeh.
+
+\section{Overview of the Shell Program}
+Brennan's shell operates on a loop known as the \textit{read-eval-print loop (REPL)}. This loop continuously:
+\begin{enumerate}
+  \item Prompts the user for input.
+  \item Parses the command into tokens.
+  \item Executes either a built-in function or launches an external program.
+\end{enumerate}
+
+This architecture mirrors the design of well-known shells such as Bash or Zsh, though on a much smaller scale. The shell uses several system calls from the \texttt{unistd.h}, \texttt{sys/wait.h}, and \texttt{signal.h} libraries to interact directly with the operating system.
+
+\subsection{The Core Loop}
+The main logic of the shell can be summarized in pseudocode:
+\begin{lstlisting}
+while (true) {
+    print_prompt();
+    char *line = read_line();
+    char **args = split_line(line);
+    execute_command(args);
+    free(line);
+    free(args);
+}
+\end{lstlisting}
+This structure highlights how the shell cycles indefinitely until the user types the \texttt{exit} command. Each iteration processes a new command independently, ensuring memory is freed to prevent leaks.
+
+\section{Process Creation with \texttt{fork()}}
+One of the most important concepts in operating systems is the ability to create new processes. The \texttt{fork()} system call duplicates the current process, creating an almost identical child process. Both the parent and child processes continue executing from the same point in the code, but the return value of \texttt{fork()} distinguishes them.
+
+\texttt{fork()} returns zero to the child process and the child’s process ID to the parent. This differentiation allows the shell to control execution flow—typically making the parent wait while the child executes the command.
+
+In this project, I learned that process creation is lightweight in UNIX systems because of the copy-on-write mechanism. This means memory pages are only duplicated when modified, improving performance. Additionally, I realized how each child inherits file descriptors, environment variables, and signal configurations from the parent process.
+
+\section{Program Execution with \texttt{execvp()}}
+Once the shell creates a child process, it must replace that process with a new program specified by the user. The \texttt{execvp()} function performs this replacement. It loads and runs the requested executable file, such as \texttt{/bin/ls}, into the process’s memory space.
+
+The combination of \texttt{fork()} and \texttt{execvp()} is powerful because it separates process creation from program execution. This separation provides flexibility, allowing the parent to maintain control while the child runs a completely different program. This design pattern is foundational to all modern shells and server applications.
+
+\section{Synchronization with \texttt{waitpid()}}
+After launching a command, the parent process typically waits for the child to finish before reading the next command. The \texttt{waitpid()} system call enables synchronization between parent and child processes, ensuring that multiple commands do not overlap. Without this synchronization, background processes would interfere with the shell’s prompt, leading to confusion or potential system instability.
+
+Studying this function reinforced my understanding of process states—running, waiting, and terminated—and how exit statuses are returned from child to parent. I also learned about \texttt{WNOHANG}, a flag that allows non-blocking waiting, which could later support background jobs in an enhanced version of the shell.
+
+\section{Command Parsing and Tokenization}
+Command parsing is essential for interpreting user input. In Brennan’s shell, the function responsible for splitting the input line uses delimiters such as spaces and tabs. This process creates a list of tokens, where the first token is the command and the remaining tokens are arguments. Understanding string tokenization in C deepened my appreciation for pointer arithmetic and memory allocation in dynamic arrays.
+
+\section{Signal Handling and Interrupts}
+One of the most critical lessons learned was how shells handle signals. For instance, pressing \texttt{Ctrl+C} sends an interrupt signal (\texttt{SIGINT}) to the process. Without proper handling, this could terminate the shell itself. By implementing custom signal handlers using \texttt{signal(SIGINT, handler)}, the shell can intercept and ignore interrupts, ensuring it remains running while only terminating child processes.
+
+Signal management mirrors real-world operating system resilience—how a system stays stable despite user or process interruptions.
+
+\section{Environment Variables and Path Resolution}
+A shell’s ability to execute commands like \texttt{ls} or \texttt{pwd} without specifying full paths depends on environment variables such as \texttt{PATH}. During this project, I explored how \texttt{execvp()} searches directories listed in the \texttt{PATH} variable. Learning to manipulate and print environment variables taught me about process inheritance and system configuration.
+
+\section{Error Handling and Memory Management}
+In C, handling memory carefully is critical. The shell allocates memory dynamically for command arrays, and failing to free that memory would lead to leaks. Error handling is also essential when system calls fail—such as an invalid command or missing executable. By adding proper error messages and checking return values, the shell becomes more robust.
+
+I also learned how improper pointer usage could cause segmentation faults. Debugging these issues improved my confidence in working with low-level memory operations and tools like \texttt{valgrind} and \texttt{gdb}.
+
+\section{Debugging and Testing}
+Building a shell from scratch requires careful debugging. Syntax errors, memory leaks, and zombie processes are common issues. Using debugging tools, I learned to trace system calls, inspect variable states, and identify race conditions. Testing involved running built-in commands, invalid inputs, and long command pipelines. Each failure was an opportunity to refine logic and memory management.
+
+\section{Comparison with Full-Fledged Shells}
+While LSH is simple, studying it provides insight into how larger shells work. Bash, for example, supports job control, scripting, history, and advanced redirection—all built upon the same principles demonstrated here. Zsh and Fish extend these ideas further by enhancing interactivity and user experience. Through this comparison, I recognized that complex systems evolve from simple, modular foundations.
+
+\section{Learning Outcomes and Professional Growth}
+This project strengthened my understanding of UNIX process management, system calls, and memory safety. Beyond technical concepts, it improved my debugging discipline, patience, and logical reasoning. I learned how to decompose a complex problem into smaller, manageable components—a key skill for software engineers and cybersecurity professionals alike.
+
+\section{Discussion and Reflections}
+Three major takeaways from studying Steve’s shell are:
+\begin{enumerate}
+  \item The importance of process management through \texttt{fork()}, mirroring how operating systems support multitasking.
+  \item The modularity of program execution via \texttt{execvp()}, enabling the shell to run external commands seamlessly.
+  \item The necessity of synchronization using \texttt{waitpid()}, ensuring process order and preventing race conditions.
+\end{enumerate}
+Beyond these, I also realized how systems-level programming blends precision and creativity. Understanding how low-level commands produce visible effects on the screen gave me a tangible sense of control over the machine. This experience bridges theoretical computer science with practical software engineering.
+
+\section{Conclusion}
+Studying and experimenting with Stephen Brennan’s shell has deepened my appreciation for operating systems and C programming. I developed a clearer understanding of process life cycles, command parsing, interprocess communication, and the delicate balance between user convenience and system control. By building and analyzing a shell, I connected textbook theory to real-world software design.
+
+Future improvements could include implementing background jobs, command history, and piping. These extensions would bring the simple LSH closer to a fully interactive UNIX shell while offering further opportunities to explore concurrency and I/O management.
+
+\section*{Acknowledgment}
+I extend my gratitude to Professor Appolo Tankeh for his guidance, insightful lectures, and encouragement throughout this project. His emphasis on understanding low-level operations has been invaluable in shaping my understanding of how real-world software systems function.
+
+\begin{thebibliography}{00}
+\bibitem{b1} S. Brennan, ``Write a Shell in C,'' 2015. [Online]. Available: \url{https://brennan.io/2015/01/16/write-a-shell-in-c/}
+\bibitem{b2} A. S. Tanenbaum and H. Bos, \textit{Modern Operating Systems}, 4th ed., Pearson, 2015.
+\bibitem{b3} M. Kerrisk, \textit{The Linux Programming Interface}, No Starch Press, 2010.
+\bibitem{b4} W. Stallings, \textit{Operating Systems: Internals and Design Principles}, 9th ed., Pearson, 2017.
+\bibitem{b5} B. W. Kernighan and D. M. Ritchie, \textit{The C Programming Language}, 2nd ed., Prentice Hall, 1988.
+\bibitem{b6} GNU Project, ``Bash Manual,'' 2024. [Online]. Available: \url{https://www.gnu.org/software/bash/manual/}
+\bibitem{b7} M. Love, \textit{Linux Kernel Development}, 3rd ed., Addison-Wesley, 2010.
+\end{thebibliography}
+
+\end{document}
