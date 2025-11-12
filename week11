@@ -1,0 +1,30 @@
+# create header
+cat > add.h <<'EOF'
+#ifndef ADD_H
+#define ADD_H
+
+int add(int a, int b);
+
+#endif
+EOF
+
+# create implementation used for both libs
+cat > add.c <<'EOF'
+#include "add.h"
+
+int add(int a, int b) {
+    return a + b;
+}
+EOF
+
+# create main program that uses the library
+cat > main.c <<'EOF'
+#include <stdio.h>
+#include "add.h"
+
+int main(void) {
+    int x = 2, y = 3;
+    printf("add(%d, %d) = %d\n", x, y, add(x,y));
+    return 0;
+}
+EOF
